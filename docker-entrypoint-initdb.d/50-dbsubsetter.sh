@@ -58,7 +58,7 @@ java \
     -jar DBSubsetter.jar \
     --originDbConnStr "jdbc:postgresql://${ORIGIN_HOST}:${ORIGIN_PORT}/${ORIGIN_DB}?user=${ORIGIN_USER}&password=${ORIGIN_PASSWORD_ESCAPED}" \
     --targetDbConnStr "jdbc:postgresql://localhost:${POSTGRES_PROXY_PORT}/${POSTGRES_DB}" \
-    --originDbParallelism 1 \
+    --originDbParallelism ${DB_SUBSETTER_ORIGIN_PARALLELISM:-1} \
     --targetDbParallelism 1 \
     ${DB_SUBSETTER_ARGS}
 EOF
