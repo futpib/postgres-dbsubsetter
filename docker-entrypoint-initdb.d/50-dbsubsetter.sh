@@ -19,6 +19,7 @@ echo "Loading roles..."
 PGPASSWORD="${ORIGIN_PASSWORD}" \
 pg_dumpall \
     --roles-only \
+    --no-role-passwords \
     --host="${ORIGIN_HOST}" \
     --port="${ORIGIN_PORT}" \
     --username="${ORIGIN_USER}" \
