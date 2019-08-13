@@ -14,8 +14,12 @@ POSTGRES_PORT=5432
 
 POSTGRES_PROXY_PORT=5431
 
+# Pre-Subset Instructions: PostgreSQL
+# https://github.com/bluerogue251/DBSubsetter/blob/master/docs/pre_subset_postgres.md
+
 echo "Loading roles..."
 
+# Dump out all postgres roles into a file called `roles.sql`
 PGPASSWORD="${ORIGIN_PASSWORD}" \
 pg_dumpall \
     --roles-only \
@@ -25,6 +29,7 @@ pg_dumpall \
     --username="${ORIGIN_USER}" \
     --database="${ORIGIN_DB}" \
     | \
+    # Load `roles.sql` into your "target" database
     psql \
         --host "${POSTGRES_HOST}" \
         --port "${POSTGRES_PORT}" \
@@ -33,6 +38,7 @@ pg_dumpall \
 
 echo "Loading schema..."
 
+# Dump out just the schema (no data) from your "origin" database into a file called `pre-data-dump.sql`
 PGPASSWORD="${ORIGIN_PASSWORD}" \
 pg_dump \
     --host "${ORIGIN_HOST}" \
@@ -41,6 +47,7 @@ pg_dump \
     --dbname "${ORIGIN_DB}" \
     --section pre-data \
     | \
+    # Load `pre-data-dump.sql` into your "target" database
     psql \
         --host "${POSTGRES_HOST}" \
         --port "${POSTGRES_PORT}" \
@@ -70,3 +77,25 @@ eval $SCRIPT
 echo "Killing unix to tcp proxy..."
 
 kill $SOCAT_PID
+
+# Post-Subset Instructions: PostgreSQL
+# https://github.com/bluerogue251/DBSubsetter/blob/master/docs/post_subset_postgres.md
+
+echo "Loading constraints and indices..."
+
+# Dump out just constraint and index definitions from your "origin" database into a file called `post-data-dump.pg_dump`
+PGPASSWORD="${ORIGIN_PASSWORD}" \
+pg_dump \
+    --host "${ORIGIN_HOST}" \
+    --port "${ORIGIN_PORT}" \
+    --user "${ORIGIN_USER}" \
+    --dbname "${ORIGIN_DB}" \
+    --section post-data \
+    --format custom \
+    | \
+    # Load `post-data-dump.pgdump` into your "target" database
+    pg_restore \
+        --host "${POSTGRES_HOST}" \
+        --port "${POSTGRES_PORT}" \
+        --user "${POSTGRES_USER}" \
+        --dbname "${POSTGRES_DB}"
