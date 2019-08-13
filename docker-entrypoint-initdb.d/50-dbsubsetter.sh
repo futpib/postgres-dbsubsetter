@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+set -xe
+
 export ORIGIN_PORT="${ORIGIN_PORT:-5432}"
 
 : "${ORIGIN_HOST:?ORIGIN_HOST is required}"
@@ -57,11 +59,11 @@ pg_dump \
 echo "Proxying postgres unix socket to tcp..."
 
 socat TCP-LISTEN:"${POSTGRES_PROXY_PORT}" UNIX-CONNECT:"${POSTGRES_HOST}.s.PGSQL.${POSTGRES_PORT}" &
-SOCAT_PID=$!
+socat_pid=$!
 
 echo "Running dbsubsetter..."
 
-SCRIPT=$(cat <<EOF
+dbsubsetter_script=$(cat <<EOF
 java \
     -jar DBSubsetter.jar \
     --originDbConnStr "jdbc:postgresql://${ORIGIN_HOST}:${ORIGIN_PORT}/${ORIGIN_DB}?user=${ORIGIN_USER}&password=${ORIGIN_PASSWORD_ESCAPED}" \
@@ -72,11 +74,11 @@ java \
 EOF
 )
 
-eval $SCRIPT
+eval $dbsubsetter_script
 
 echo "Killing unix to tcp proxy..."
 
-kill $SOCAT_PID
+kill $socat_pid
 
 # Post-Subset Instructions: PostgreSQL
 # https://github.com/bluerogue251/DBSubsetter/blob/master/docs/post_subset_postgres.md
@@ -99,3 +101,46 @@ pg_dump \
         --port "${POSTGRES_PORT}" \
         --user "${POSTGRES_USER}" \
         --dbname "${POSTGRES_DB}"
+
+# Fixing Sequences 
+# https://wiki.postgresql.org/wiki/Fixing_Sequences
+
+echo "Fixing sequences..."
+
+create_sequences_script_script=$(cat <<EOF
+SELECT 'SELECT SETVAL(' ||
+       quote_literal(quote_ident(PGT.schemaname) || '.' || quote_ident(S.relname)) ||
+       ', COALESCE(MAX(' ||quote_ident(C.attname)|| '), 1) ) FROM ' ||
+       quote_ident(PGT.schemaname)|| '.'||quote_ident(T.relname)|| ';'
+FROM pg_class AS S,
+     pg_depend AS D,
+     pg_class AS T,
+     pg_attribute AS C,
+     pg_tables AS PGT
+WHERE S.relkind = 'S'
+    AND S.oid = D.objid
+    AND D.refobjid = T.oid
+    AND D.refobjid = C.attrelid
+    AND D.refobjsubid = C.attnum
+    AND T.relname = PGT.tablename
+ORDER BY S.relname;
+EOF
+)
+
+sequences_script=$(
+psql \
+    --host "${POSTGRES_HOST}" \
+    --port "${POSTGRES_PORT}" \
+    --user "${POSTGRES_USER}" \
+    --dbname "${POSTGRES_DB}" \
+    --command "${create_sequences_script_script}" \
+    | \
+    grep 'SELECT'
+)
+
+psql \
+    --host "${POSTGRES_HOST}" \
+    --port "${POSTGRES_PORT}" \
+    --user "${POSTGRES_USER}" \
+    --dbname "${POSTGRES_DB}" \
+    --command "${sequences_script}"
