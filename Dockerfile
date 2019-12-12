@@ -1,4 +1,4 @@
-FROM postgres:10.6-alpine
+FROM postgres:11.6-alpine
 
 RUN apk add --update openjdk8-jre java-postgresql-jdbc socat
 
