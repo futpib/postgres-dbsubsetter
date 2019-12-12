@@ -2,7 +2,7 @@
 
 > Postgres & [DBSubsetter](https://github.com/bluerogue251/DBSubsetter) in one docker image
 
-[![Build Status](https://travis-ci.org/futpib/postgres-dbsubsetter.svg?branch=master)](https://travis-ci.org/futpib/postgres-dbsubsetter)
+[![Build Status](https://travis-ci.org/futpib/postgres-dbsubsetter.svg?branch=master)](https://travis-ci.org/futpib/postgres-dbsubsetter) [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/futpib/postgres-dbsubsetter)](https://hub.docker.com/r/futpib/postgres-dbsubsetter/tags)
 
 ## Example
 
